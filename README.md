@@ -47,14 +47,15 @@ training.py
 List of Functions:
 
 - Loss:
-- 
+
 We have experimented with different loss functions, including *crossentropy*, *NNLoss*, and *KLNDiv*. We reported our results in our main findings
 
 - Dynamic_LR_Scheduler:
-- 
+
 We will illustrate the hyperparameters that we have used in. This function returns step, learning rate, etc 
 
 - LabelSmoothing:
+
 We take the label smoothing as an approach to penalize the model when it is ``over-confident"
 
 ## Training
