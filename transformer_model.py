@@ -112,3 +112,119 @@ class MultiHeadAttention(nn.Module):
         scaled_attention = scaled_attention.transpose(2, 1).contiguous().view(batch_size, -1,
                                                                               self.d_model)  # (batch_size, seq_len_q, d_model)
         return self.wo(scaled_attention)
+
+"""# Encoder"""
+
+
+class PositionwiseFeedForward(nn.Module):
+    def __init__(self, d_model, d_ff):
+        super(PositionwiseFeedForward, self).__init__()
+        self.w_1 = nn.Linear(d_model, d_ff)
+        self.w_2 = nn.Linear(d_ff, d_model)
+
+    def forward(self, x):
+        return self.w_2(F.relu(self.w_1(x)))
+
+
+class EncoderLayer(nn.Module):
+    def __init__(self, d_model, num_heads, d_ff, dropout=0.1):
+        super(EncoderLayer, self).__init__()
+        self.multi_head_attention = MultiHeadAttention(d_model, num_heads)
+        self.feed_forward = PositionwiseFeedForward(d_model, d_ff)
+        self.layernorm1 = nn.LayerNorm(d_model)
+        self.layernorm2 = nn.LayerNorm(d_model)
+        self.dropout1 = nn.Dropout(dropout)
+        self.dropout2 = nn.Dropout(dropout)
+
+    def forward(self, x, mask):
+        attention_output = self.dropout1(self.multi_head_attention(x, x, x, mask))
+        ffn_input = self.layernorm1(x + attention_output)
+        ffn_output = self.dropout2(self.feed_forward(ffn_input))
+        output = self.layernorm2(ffn_input + ffn_output)
+        return output
+
+
+class Encoder(nn.Module):
+    def __init__(self, n_layer, d_model, num_heads, d_ff, dropout=0.1):
+        super(Encoder, self).__init__()
+        self.enc_layers = [EncoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(n_layer)]
+
+    def forward(self, x, mask):
+        for layer in self.enc_layers:
+            x = layer(x, mask)
+            print("x", x)
+        return x
+
+
+"""# Decoder"""
+
+
+class DecoderLayer(nn.Module):
+    def __init__(self, d_model, num_heads, d_ff, dropout=0.1):
+        super(DecoderLayer, self).__init__()
+        self.self_attention = MultiHeadAttention(d_model, num_heads)
+        self.cross_attention = MultiHeadAttention(d_model, num_heads)
+        self.feed_forward = PositionwiseFeedForward(d_model, d_ff)
+        self.layernorm1 = nn.LayerNorm(d_model)
+        self.layernorm2 = nn.LayerNorm(d_model)
+        self.layernorm3 = nn.LayerNorm(d_model)
+        self.dropout1 = nn.Dropout(dropout)
+        self.dropout2 = nn.Dropout(dropout)
+        self.dropout3 = nn.Dropout(dropout)
+
+    def forward(self, x, enc_output, padding_mask, look_ahead_mask):
+        self_attention_output = self.dropout1(self.self_attention(x, x, x, look_ahead_mask))
+        cross_attention_input = self.layernorm1(x + self_attention_output)
+
+        cross_attention_output = self.dropout2(self.cross_attention(x, enc_output, enc_output, padding_mask))
+        ffn_input = self.layernorm2(cross_attention_output + cross_attention_output)
+
+        ffn_output = self.dropout3(self.feed_forward(ffn_input))
+        output = self.layernorm3(ffn_input + ffn_output)
+        return output
+
+
+class Decorder(nn.Module):
+    def __init__(self, n_layer, d_model, num_heads, d_ff, dropout=0.1):
+        super(Decorder, self).__init__()
+        self.dec_layers = [DecoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(n_layer)]
+
+    def forward(self, x, enc_output, padding_mask, look_ahead_mask):
+        for layer in self.dec_layers:
+            x = layer(x, enc_output, padding_mask, look_ahead_mask)
+        return x
+
+
+"""# Transformer"""
+
+
+class Transformer(nn.Module):
+    def __init__(self, n_encoder_layer, n_decorder_layer, src_vocab_size, tgt_vocab_size, max_sen_len, d_model,
+                 num_heads, d_ff, dropout):
+        super(Transformer, self).__init__()
+        self.src_embedding = nn.Embedding(src_vocab_size, d_model)
+        self.pos_encoding = positional_encoding(max_sen_len, d_model)
+        self.encoder = EncoderLayer(d_model, num_heads, d_ff, dropout)
+        # decoder
+        self.tgt_embedding = nn.Embedding(tgt_vocab_size, d_model)
+        self.decoder = DecoderLayer(d_model, num_heads, d_ff, dropout)
+        self.linear = nn.Linear(d_model, tgt_vocab_size)
+
+    def forward(self, x, y, src_padding_mask, tgt_padding_mask, tgt_look_ahead_mask):
+        src_sen_len = x.shape[1]
+        tgt_sen_len = y.shape[1]
+        # print(self.src_embedding(x).shape)
+        # print(self.pos_encoding.shape)
+        # print(self.pos_encoding[:, :src_sen_len, :].shape)
+        # print(x.is_cuda)
+        # print(y.is_cuda)
+        # print(src_padding_mask.is_cuda)
+        # print(tgt_padding_mask.is_cuda)
+        # print(tgt_look_ahead_mask.is_cuda)
+        enc_output = self.encoder(self.src_embedding(x) + self.pos_encoding[:, :src_sen_len, :], src_padding_mask)
+        # print(self.tgt_embedding(y).shape)
+        # print(self.pos_encoding[:, :tgt_sen_len, :].shape)
+        dec_output = self.decoder(self.tgt_embedding(y) + self.pos_encoding[:, :tgt_sen_len, :], enc_output,
+                                  tgt_padding_mask, tgt_look_ahead_mask)
+        output = F.log_softmax(self.linear(dec_output), dim=-1)  # apply linear first
+        return output
