@@ -1,4 +1,4 @@
-# Transformer Replication Project
+# The TABLE Group's Transformer!
 
 The repo for the mini replication of transformer and its translation task for CS6741 Class Replication Project
 
