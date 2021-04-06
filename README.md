@@ -4,6 +4,10 @@ The repo for the mini replication of transformer and its translation task for CS
 
 ## Installation
 
+```
+pip install -r requirements.txt
+```
+
 ## File Description
 
 ## Training
