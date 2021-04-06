@@ -3,7 +3,7 @@
 The repo for the mini replication of transformer and its translation task for CS6741 Class Replication Project
 
 ## Installation
-We recommend to use the virtual environment. Please install the below packages before running the codes
+We recommend using the virtual environment. Please install the below packages before running the codes
 
 ```
 pip install -r requirements.txt
@@ -40,18 +40,41 @@ transformer
 training.py
 
 List of Functions:
-- Loss:
-We have eexperimented with different loss functions, including *crossentropy*, *NNLoss* and *KLNDiv*. We reported our results in our main findings
 
+- Loss:
+- 
+We have experimented with different loss functions, including *crossentropy*, *NNLoss*, and *KLNDiv*. We reported our results in our main findings
+
+- Dynamic_LR_Scheduler:
+- 
+We will illustrate the hyperparameters that we have used in. This function returns step, learning rate, etc 
+
+- LabelSmoothing:
+We take the label smoothing as an approach to penalize the model when it is ``over-confident"
 
 ## Training
+- build_vocab
+
+- data_process
+
+- generate_batch
+
+- train
+
+- evaluate
+
+- epoch_time
+
 ### Hyperparameters
+
 1. *Batch Size*
-In our experimental settings, we found the bottleneck is mainly the batch size. However, due to the bottleneck of our GPU resources, we cannot set the batch size as illustrated in the Goolge original paper.
-We experimented the batch size in (5, 10, 15)
+
+In our experimental settings, we found the bottleneck is mainly the batch size. However, due to the bottleneck of our GPU resources, we cannot set the batch size as illustrated in the Google original paper.
+We experimented with the batch size in (5, 10, 15)
 
 2. *Learning rate*
-We followed the original setting of learning rate computing, and set the factor=1 as the same in the original paper.  
+
+We followed the original setting of learning rate computing and set the factor=1 as the same in the original paper.  
 
 ```
 self.factor * \
@@ -60,23 +83,31 @@ self.factor * \
 ```
 
 3. *Label Smoothing*
-We experimented with the setting of using lable smoothing with smooth ratio to be 0.1 v.s. 0, we reported our findings of the label smoothing factor of the model's training loss and perplexity. 
+
+We experimented with the setting of using label smoothing with a smooth ratio to be 0.1 v.s. 0, we reported our findings of the label smoothing factor of the model's training loss and perplexity. 
 
  *Others*
+ 
 N_stack = 6
+
 d_model = 512
+
 num_heads = 8
+
 d_ff = 2048
+
 dropout = 0.1
+
 beta1 = 0.9
+
 beta2 = 0.98
+
 epsilon = 10**(-9)
+
 warmup_step = 4000
-epsilon
-warmup_step
 
-### Findings
 
-## Results
+### Findings and Results
+Please refer to findings.pdf for more details. 
 
 ## Summary
