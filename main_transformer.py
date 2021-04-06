@@ -100,3 +100,69 @@ print(de_vocab['<unk>'])
 print(de_vocab['<pad>'])
 print(de_vocab['<bos>'])
 print(de_vocab['<eos>'])
+
+
+"""# Training"""
+
+import time
+from tqdm import tqdm
+
+device = torch.device('cuda')
+
+
+def train(model: nn.Module,
+          iterator: torch.utils.data.DataLoader,
+          scheduler: Dynamic_LR_Scheduler,
+          criterion: nn.Module):
+    # train model
+    model.train()
+    epoch_loss = 0
+    for _, (src, tgt) in tqdm(enumerate(iterator)):
+        # print(device)
+        src, tgt = src.to(device), tgt.to(device)
+        tgt_inp = tgt[:, :-1]
+        tgt_real = tgt[:, 1:]
+        scheduler.optimizer.zero_grad()
+        # generate mask for model
+        src_padding_mask, tgt_look_ahead_mask, tgt_padding_mask = create_masks(src, tgt_inp)
+        # print(src_padding_mask.shape)
+        # print(tgt_look_ahead_mask.shape)
+        # print(tgt_padding_mask.shape)
+        output = model(src, tgt_inp, src_padding_mask, tgt_padding_mask, tgt_look_ahead_mask) # batch size x sentence size x vab size
+        # whether to remove the first word and last
+        output = output.view(-1, output.shape[-1])
+        tgt_real = tgt_real.contiguous().view(-1)
+        loss = criterion(output, tgt_real)
+        loss.backward()
+        scheduler.step()
+        epoch_loss += loss.item()
+        print("bloss:", loss.item())
+        # torch.cuda.empty_cache()
+    return epoch_loss / len(iterator)
+
+
+def evaluate(model: nn.Module,
+             iterator: torch.utils.data.DataLoader,
+             criterion: nn.Module):
+    model.eval()
+    epoch_loss = 0
+    with torch.no_grad():
+        for _, (src, tgt) in enumerate(iterator):
+            src, tgt = src.to(device), tgt.to(device)
+            tgt_inp = tgt[:, :-1]
+            tgt_real = tgt[:, 1:]
+            src_padding_mask, tgt_look_ahead_mask, tgt_padding_mask = create_masks(src, tgt_inp)
+            output = model(src, tgt_inp, src_padding_mask, tgt_padding_mask, tgt_look_ahead_mask)
+            # change shape
+            output = output.view(-1, output.shape[-1])
+            tgt_real = tgt_real.contiguous().view(-1)
+            loss = criterion(output, tgt_real)
+            epoch_loss += loss.item()
+    return epoch_loss / len(iterator)
+
+def epoch_time(start_time: int,
+               end_time: int):
+    elapsed_time = end_time - start_time
+    elapsed_mins = int(elapsed_time / 60)
+    elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
+    return elapsed_mins, elapsed_secs
