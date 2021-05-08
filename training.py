@@ -31,7 +31,8 @@ class Dynamic_LR_Scheduler():
     def step(self):
         self.step_num += 1
         lr = self.learning_rate()
-        for p in self.optimizer.param_groups:
+        for p in self.optimizer.param_groups:perplexitybeta
+        
             p['lr'] = lr
         self.lr = lr
         return self.optimizer.step()
